@@ -1,16 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, RoundRecord, Activity, UserRole, GameSession } from '@/types'
+import type { GameState, RoundRecord, Activity, UserRole, GameSession, AchievementProfile, PartialAchievementProgress } from '@/types'
 import { getRandomActivities } from '@/engine/activities'
 import { generateHints } from '@/engine/probability'
 import { settleRound, generateId } from '@/engine/settlement'
 import { generateRandomChallenges, createInitialChallengeProgress, updateChallengesProgress } from '@/engine/challenges'
+import { generateAchievementProfile, calculatePartialProgress } from '@/engine/achievement'
 import { 
   saveSession, 
   saveRoundRecord, 
   getRoundRecordsBySession, 
   deleteRoundRecord,
   getLatestSession,
+  saveAchievementProfile,
+  getLatestAchievementProfile,
+  getAchievementProfileBySession
 } from '@/db'
 
 const MAX_ROUNDS = 10
@@ -54,9 +58,22 @@ export const useGameStore = defineStore('game', () => {
   const roundRecords = ref<RoundRecord[]>([])
   const lastRecordId = ref<string | null>(null)
   const isInitialized = ref(false)
+  const latestAchievement = ref<AchievementProfile | null>(null)
+  const showAchievementModal = ref(false)
 
   const canUndo = computed(() => past.value.length > 0 && present.value.phase !== 'gameover')
   const canRedo = computed(() => future.value.length > 0)
+
+  const partialProgress = computed<PartialAchievementProgress | null>(() => {
+    if (roundRecords.value.length === 0) return null
+    return calculatePartialProgress(
+      present.value.currentRound,
+      present.value.maxRounds,
+      present.value.totalScore,
+      roundRecords.value,
+      present.value.challenges
+    )
+  })
 
   function saveToHistory() {
     const lastRecord = roundRecords.value.length > 0 
@@ -198,6 +215,7 @@ export const useGameStore = defineStore('game', () => {
       present.value.phase = 'gameover'
       lastRecordId.value = null
       await updateSessionInDB()
+      await generateAndSaveAchievement()
       return
     }
 
@@ -216,6 +234,34 @@ export const useGameStore = defineStore('game', () => {
     await updateSessionInDB()
   }
 
+  async function generateAndSaveAchievement() {
+    if (present.value.phase !== 'gameover') return
+
+    const existingProfile = await getAchievementProfileBySession(present.value.sessionId)
+    if (existingProfile) return
+
+    const profile = generateAchievementProfile(
+      present.value.sessionId,
+      present.value.totalScore,
+      present.value.maxRounds,
+      roundRecords.value,
+      present.value.challenges,
+      present.value.challengeBonus
+    )
+
+    await saveAchievementProfile(profile)
+    latestAchievement.value = profile
+  }
+
+  async function loadLatestAchievement() {
+    const profile = await getLatestAchievementProfile()
+    latestAchievement.value = profile || null
+  }
+
+  function toggleAchievementModal(show?: boolean) {
+    showAchievementModal.value = show !== undefined ? show : !showAchievementModal.value
+  }
+
   async function startNewGame() {
     past.value = []
     future.value = []
@@ -223,6 +269,7 @@ export const useGameStore = defineStore('game', () => {
     roundRecords.value = []
     lastRecordId.value = null
     isInitialized.value = true
+    showAchievementModal.value = false
 
     await saveSession({
       id: present.value.sessionId,
@@ -316,6 +363,7 @@ export const useGameStore = defineStore('game', () => {
   async function initGame() {
     if (!isInitialized.value) {
       await restoreFromDB()
+      await loadLatestAchievement()
     }
   }
 
@@ -325,6 +373,9 @@ export const useGameStore = defineStore('game', () => {
     future,
     roundRecords,
     isInitialized,
+    latestAchievement,
+    showAchievementModal,
+    partialProgress,
     canUndo,
     canRedo,
     undo,
@@ -336,6 +387,9 @@ export const useGameStore = defineStore('game', () => {
     nextRound,
     startNewGame,
     loadRoundRecords,
-    initGame
+    initGame,
+    generateAndSaveAchievement,
+    loadLatestAchievement,
+    toggleAchievementModal
   }
 })

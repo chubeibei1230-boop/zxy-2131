@@ -137,3 +137,83 @@ export interface HistoryState {
   present: GameState
   future: GameState[]
 }
+
+export type StrategyTag = 
+  | '保守型玩家'
+  | '激进型玩家'
+  | '平衡型玩家'
+  | '运气流'
+  | '策略流'
+  | '专精型'
+  | '挑战达人'
+  | '逆袭者'
+
+export type TendencyType = 'success' | 'failure' | 'balanced'
+
+export interface AchievementProfile {
+  id: string
+  sessionId: string
+  totalScore: number
+  rank: {
+    title: string
+    stars: number
+    color: string
+  }
+  challenges: {
+    total: number
+    completed: number
+    bonus: number
+    list: {
+      title: string
+      completed: boolean
+      bonus: number
+    }[]
+  }
+  highestProfitRound: {
+    roundNumber: number
+    profit: number
+  }
+  tendency: {
+    type: TendencyType
+    label: string
+    description: string
+  }
+  preferredActivityTypes: {
+    category: string
+    count: number
+    percentage: number
+  }[]
+  strategyTags: StrategyTag[]
+  summary: string
+  totalRounds: number
+  completedAt: string
+}
+
+export interface PartialAchievementProgress {
+  currentRound: number
+  totalRounds: number
+  currentScore: number
+  projectedRank: {
+    title: string
+    stars: number
+    color: string
+  }
+  challengesProgress: {
+    total: number
+    completed: number
+    inProgress: number
+  }
+  currentHighestProfitRound: {
+    roundNumber: number
+    profit: number
+  }
+  currentTendency: {
+    type: TendencyType
+    label: string
+  }
+  currentPreferredTypes: {
+    category: string
+    count: number
+  }[]
+  emergingTags: StrategyTag[]
+}

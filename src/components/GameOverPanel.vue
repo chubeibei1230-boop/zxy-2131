@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ChallengeTarget } from '@/types'
-import { Trophy, Star, RotateCcw, Target, CheckCircle2, XCircle } from 'lucide-vue-next'
+import { Trophy, Star, RotateCcw, Target, CheckCircle2, XCircle, FileText } from 'lucide-vue-next'
 
 interface Props {
   totalScore: number
   maxRounds: number
   challenges?: ChallengeTarget[]
   challengeBonus?: number
+  hasAchievement?: boolean
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   newGame: []
+  viewAchievement: []
 }>()
 
 const rank = computed(() => {
@@ -113,6 +115,13 @@ const totalChallengeBonus = computed(() => {
         </div>
       </div>
     </div>
+
+    <button v-if="hasAchievement" 
+            class="btn-secondary w-full flex items-center justify-center gap-2 mb-3"
+            @click="emit('viewAchievement')">
+      <FileText class="w-5 h-5" />
+      <span>查看成就档案</span>
+    </button>
 
     <button class="btn-primary w-full flex items-center justify-center gap-2"
             @click="emit('newGame')">

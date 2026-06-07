@@ -10,6 +10,8 @@ import ReviewPanel from '@/components/ReviewPanel.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
 import RoleSelector from '@/components/RoleSelector.vue'
 import ChallengePanel from '@/components/ChallengePanel.vue'
+import AchievementProfile from '@/components/AchievementProfile.vue'
+import AchievementProgress from '@/components/AchievementProgress.vue'
 import { Dice1, Lock } from 'lucide-vue-next'
 
 const game = useGameStore()
@@ -71,6 +73,8 @@ onMounted(async () => {
             :challengeBonus="game.present.challengeBonus"
           />
 
+          <AchievementProgress :progress="game.partialProgress" />
+
           <div v-if="game.present.currentRole === 'hint'" class="glass-card p-5">
             <h3 class="font-display font-bold text-lg mb-3" style="color: #FDCB6E">
               💡 提示员权限
@@ -121,7 +125,9 @@ onMounted(async () => {
                 :maxRounds="game.present.maxRounds"
                 :challenges="game.present.challenges"
                 :challengeBonus="game.present.challengeBonus"
+                :hasAchievement="!!game.latestAchievement"
                 @newGame="game.startNewGame()"
+                @viewAchievement="game.toggleAchievementModal(true)"
               />
             </div>
 
@@ -186,5 +192,11 @@ onMounted(async () => {
     <footer class="py-6 text-center text-xs opacity-40">
       <p>所有数据保存在本地浏览器 IndexedDB 中 • 支持撤销/重做 • 刷新页面自动恢复</p>
     </footer>
+
+    <AchievementProfile
+      v-if="game.showAchievementModal"
+      :profile="game.latestAchievement"
+      @close="game.toggleAchievementModal(false)"
+    />
   </div>
 </template>

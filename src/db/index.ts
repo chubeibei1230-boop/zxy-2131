@@ -1,8 +1,8 @@
 import { openDB } from 'idb'
-import type { GameSession, RoundRecord } from '@/types'
+import type { GameSession, RoundRecord, AchievementProfile } from '@/types'
 
 const DB_NAME = 'prob-game-v2'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise: Promise<any> | null = null
 
@@ -11,7 +11,7 @@ export async function initDB(): Promise<any> {
 
   try {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
         if (!db.objectStoreNames.contains('game_sessions')) {
           const sessionStore = db.createObjectStore('game_sessions', { keyPath: 'id' })
           sessionStore.createIndex('createdAt', 'createdAt')
@@ -22,6 +22,14 @@ export async function initDB(): Promise<any> {
           recordStore.createIndex('sessionId', 'sessionId')
           recordStore.createIndex('roundNumber', 'roundNumber')
           recordStore.createIndex('timestamp', 'timestamp')
+        }
+
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains('achievement_profiles')) {
+            const profileStore = db.createObjectStore('achievement_profiles', { keyPath: 'id' })
+            profileStore.createIndex('sessionId', 'sessionId')
+            profileStore.createIndex('completedAt', 'completedAt')
+          }
         }
       }
     })
@@ -118,11 +126,62 @@ export async function deleteSession(id: string): Promise<void> {
 export async function clearAllData(): Promise<void> {
   try {
     const db = await initDB()
-    const tx = db.transaction(['game_sessions', 'round_records'], 'readwrite')
+    const tx = db.transaction(['game_sessions', 'round_records', 'achievement_profiles'], 'readwrite')
     await tx.objectStore('game_sessions').clear()
     await tx.objectStore('round_records').clear()
+    if (db.objectStoreNames.contains('achievement_profiles')) {
+      await tx.objectStore('achievement_profiles').clear()
+    }
     await tx.done
   } catch (e) {
     console.error('clearAllData error:', e)
+  }
+}
+
+export async function saveAchievementProfile(profile: AchievementProfile): Promise<void> {
+  try {
+    const db = await initDB()
+    await db.put('achievement_profiles', profile)
+  } catch (e) {
+    console.error('saveAchievementProfile error:', e)
+  }
+}
+
+export async function getAchievementProfileBySession(sessionId: string): Promise<AchievementProfile | undefined> {
+  try {
+    const db = await initDB()
+    const profiles = await db.getAllFromIndex('achievement_profiles', 'sessionId')
+    return profiles.find((p: AchievementProfile) => p.sessionId === sessionId)
+  } catch (e) {
+    return undefined
+  }
+}
+
+export async function getLatestAchievementProfile(): Promise<AchievementProfile | undefined> {
+  try {
+    const db = await initDB()
+    const profiles = await db.getAllFromIndex('achievement_profiles', 'completedAt')
+    return profiles[profiles.length - 1]
+  } catch (e) {
+    return undefined
+  }
+}
+
+export async function getAllAchievementProfiles(): Promise<AchievementProfile[]> {
+  try {
+    const db = await initDB()
+    const profiles = await db.getAllFromIndex('achievement_profiles', 'completedAt')
+    return profiles.reverse()
+  } catch (e) {
+    return []
+  }
+}
+
+export async function deleteAchievementProfile(id: string): Promise<void> {
+  try {
+    const db = await initDB()
+    await db.delete('achievement_profiles', id)
+  } catch (e) {
+    console.error('deleteAchievementProfile error:', e)
   }
 }
