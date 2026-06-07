@@ -1,10 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, RoundRecord, Activity, RoundResult, ProbabilityHint } from '@/types'
+import type { GameState, RoundRecord, Activity, UserRole, GameSession } from '@/types'
 import { getRandomActivities } from '@/engine/activities'
 import { generateHints } from '@/engine/probability'
 import { settleRound, generateId } from '@/engine/settlement'
-import { saveSession, saveRoundRecord, getRoundRecordsBySession } from '@/db'
+import { 
+  saveSession, 
+  saveRoundRecord, 
+  getRoundRecordsBySession, 
+  deleteRoundRecord,
+  getLatestSession,
+} from '@/db'
 
 const MAX_ROUNDS = 10
 const MAX_SELECTED = 3
@@ -25,7 +31,8 @@ function createInitialState(): GameState {
     currentResult: null,
     queueLength: Math.floor(Math.random() * 10) + 3,
     rewardPool: Math.floor(Math.random() * 200) + 100,
-    phase: 'selecting'
+    phase: 'selecting',
+    currentRole: 'player'
   }
 }
 
@@ -34,8 +41,10 @@ export const useGameStore = defineStore('game', () => {
   const present = ref<GameState>(createInitialState())
   const future = ref<GameState[]>([])
   const roundRecords = ref<RoundRecord[]>([])
+  const lastRecordId = ref<string | null>(null)
+  const isInitialized = ref(true)
 
-  const canUndo = computed(() => past.value.length > 0)
+  const canUndo = computed(() => past.value.length > 0 && present.value.phase !== 'gameover')
   const canRedo = computed(() => future.value.length > 0)
 
   function saveToHistory() {
@@ -46,22 +55,35 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  function undo() {
+  async function undo() {
     if (!canUndo.value) return
+    
     future.value.unshift(JSON.parse(JSON.stringify(present.value)))
     const prevState = past.value.pop()!
+    
+    if (present.value.phase === 'result' && lastRecordId.value) {
+      await deleteRoundRecord(lastRecordId.value)
+      roundRecords.value.pop()
+      lastRecordId.value = null
+    }
+    
     present.value = prevState
+    await updateSessionInDB()
   }
 
-  function redo() {
+  async function redo() {
     if (!canRedo.value) return
+    
     past.value.push(JSON.parse(JSON.stringify(present.value)))
     const nextState = future.value.shift()!
+    
     present.value = nextState
+    await updateSessionInDB()
   }
 
   function toggleActivity(activity: Activity) {
     if (present.value.phase !== 'selecting') return
+    if (present.value.currentRole !== 'player') return
 
     const index = present.value.selectedActivities.findIndex(a => a.id === activity.id)
     
@@ -76,16 +98,23 @@ export const useGameStore = defineStore('game', () => {
     return present.value.selectedActivities.some(a => a.id === activityId)
   }
 
-  function confirmSelection() {
+  function setRole(role: UserRole) {
+    present.value.currentRole = role
+  }
+
+  async function confirmSelection() {
     if (present.value.selectedActivities.length === 0) return
     if (present.value.phase !== 'selecting') return
+    if (present.value.currentRole !== 'player') return
 
     saveToHistory()
 
     const result = settleRound(
       present.value.currentRound,
       present.value.selectedActivities,
-      present.value.hints
+      present.value.hints,
+      present.value.queueLength,
+      present.value.rewardPool
     )
 
     present.value.currentResult = result
@@ -104,17 +133,18 @@ export const useGameStore = defineStore('game', () => {
     }
 
     roundRecords.value.push(record)
-    saveRoundRecord(record)
-
-    updateSessionInDB()
+    lastRecordId.value = record.id
+    await saveRoundRecord(record)
+    await updateSessionInDB()
   }
 
-  function nextRound() {
+  async function nextRound() {
     if (present.value.phase !== 'result') return
 
     if (present.value.currentRound >= present.value.maxRounds) {
       present.value.phase = 'gameover'
-      updateSessionInDB()
+      lastRecordId.value = null
+      await updateSessionInDB()
       return
     }
 
@@ -128,30 +158,49 @@ export const useGameStore = defineStore('game', () => {
     present.value.queueLength = Math.floor(Math.random() * 10) + 3
     present.value.rewardPool = Math.floor(Math.random() * 200) + 100
     present.value.phase = 'selecting'
+    lastRecordId.value = null
+
+    await updateSessionInDB()
   }
 
-  function startNewGame() {
+  async function startNewGame() {
     past.value = []
     future.value = []
     present.value = createInitialState()
     roundRecords.value = []
+    lastRecordId.value = null
+    isInitialized.value = true
 
-    saveSession({
+    await saveSession({
       id: present.value.sessionId,
       totalScore: 0,
       currentRound: 1,
       maxRounds: MAX_ROUNDS,
+      queueLength: present.value.queueLength,
+      rewardPool: present.value.rewardPool,
+      hints: present.value.hints,
+      availableActivities: present.value.availableActivities,
+      selectedActivities: [],
+      currentResult: null,
+      phase: 'selecting',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     })
   }
 
-  function updateSessionInDB() {
-    saveSession({
+  async function updateSessionInDB() {
+    await saveSession({
       id: present.value.sessionId,
       totalScore: present.value.totalScore,
       currentRound: present.value.currentRound,
       maxRounds: present.value.maxRounds,
+      queueLength: present.value.queueLength,
+      rewardPool: present.value.rewardPool,
+      hints: present.value.hints,
+      availableActivities: present.value.availableActivities,
+      selectedActivities: present.value.selectedActivities,
+      currentResult: present.value.currentResult,
+      phase: present.value.phase,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     })
@@ -160,6 +209,52 @@ export const useGameStore = defineStore('game', () => {
   async function loadRoundRecords() {
     const records = await getRoundRecordsBySession(present.value.sessionId)
     roundRecords.value = records
+    if (records.length > 0) {
+      lastRecordId.value = records[records.length - 1].id
+    }
+  }
+
+  async function restoreFromDB() {
+    try {
+      const latest = await getLatestSession()
+      
+      if (latest && latest.phase !== 'gameover') {
+        const records = await getRoundRecordsBySession(latest.id)
+        
+        present.value = {
+          sessionId: latest.id,
+          totalScore: latest.totalScore || 0,
+          currentRound: latest.currentRound || 1,
+          maxRounds: latest.maxRounds || MAX_ROUNDS,
+          selectedActivities: latest.selectedActivities || [],
+          availableActivities: latest.availableActivities || getRandomActivities(4),
+          hints: latest.hints || generateHints(getRandomActivities(4), 2),
+          currentResult: latest.currentResult || null,
+          queueLength: latest.queueLength || Math.floor(Math.random() * 10) + 3,
+          rewardPool: latest.rewardPool || Math.floor(Math.random() * 200) + 100,
+          phase: latest.phase || 'selecting',
+          currentRole: 'player'
+        }
+        
+        roundRecords.value = records
+        if (records.length > 0 && latest.phase === 'result') {
+          lastRecordId.value = records[records.length - 1].id
+        }
+      } else {
+        await startNewGame()
+      }
+    } catch (e) {
+      console.error('Restore from DB failed:', e)
+      await startNewGame()
+    }
+    
+    isInitialized.value = true
+  }
+
+  async function initGame() {
+    if (!isInitialized.value) {
+      await restoreFromDB()
+    }
   }
 
   return {
@@ -167,15 +262,18 @@ export const useGameStore = defineStore('game', () => {
     present,
     future,
     roundRecords,
+    isInitialized,
     canUndo,
     canRedo,
     undo,
     redo,
     toggleActivity,
     isSelected,
+    setRole,
     confirmSelection,
     nextRound,
     startNewGame,
-    loadRoundRecords
+    loadRoundRecords,
+    initGame
   }
 })

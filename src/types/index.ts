@@ -1,3 +1,5 @@
+export type UserRole = 'player' | 'hint' | 'settlement'
+
 export interface Activity {
   id: string
   name: string
@@ -20,6 +22,7 @@ export interface ProbabilityHint {
     rewardDelta?: number
     queuePenalty?: number
   }
+  hidden?: boolean
 }
 
 export interface ActivityResult {
@@ -49,6 +52,7 @@ export interface GameState {
   queueLength: number
   rewardPool: number
   phase: 'selecting' | 'result' | 'gameover'
+  currentRole: UserRole
 }
 
 export interface RoundRecord {
@@ -67,6 +71,13 @@ export interface GameSession {
   totalScore: number
   currentRound: number
   maxRounds: number
+  queueLength: number
+  rewardPool: number
+  hints: ProbabilityHint[]
+  availableActivities: Activity[]
+  selectedActivities: Activity[]
+  currentResult: RoundResult | null
+  phase: 'selecting' | 'result' | 'gameover'
   createdAt: string
   updatedAt: string
 }
