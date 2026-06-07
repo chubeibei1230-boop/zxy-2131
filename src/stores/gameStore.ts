@@ -66,8 +66,9 @@ export const useGameStore = defineStore('game', () => {
 
   const partialProgress = computed<PartialAchievementProgress | null>(() => {
     if (roundRecords.value.length === 0) return null
+    const completedRounds = roundRecords.value.length
     return calculatePartialProgress(
-      present.value.currentRound,
+      completedRounds,
       present.value.maxRounds,
       present.value.totalScore,
       roundRecords.value,
@@ -324,7 +325,7 @@ export const useGameStore = defineStore('game', () => {
     try {
       const latest = await getLatestSession()
       
-      if (latest && latest.phase !== 'gameover') {
+      if (latest) {
         const records = await getRoundRecordsBySession(latest.id)
         
         present.value = {
@@ -348,6 +349,13 @@ export const useGameStore = defineStore('game', () => {
         roundRecords.value = records
         if (records.length > 0 && latest.phase === 'result') {
           lastRecordId.value = records[records.length - 1].id
+        }
+
+        if (latest.phase === 'gameover') {
+          const achievement = await getAchievementProfileBySession(latest.id)
+          if (achievement) {
+            latestAchievement.value = achievement
+          }
         }
       } else {
         await startNewGame()

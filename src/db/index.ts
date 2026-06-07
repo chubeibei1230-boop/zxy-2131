@@ -99,7 +99,7 @@ export async function deleteRoundRecord(id: string): Promise<void> {
 export async function getRoundRecordsBySession(sessionId: string): Promise<RoundRecord[]> {
   try {
     const db = await initDB()
-    const records = await db.getAllFromIndex('round_records', 'sessionId')
+    const records = await db.getAllFromIndex('round_records', 'sessionId', sessionId)
     return records.sort((a: RoundRecord, b: RoundRecord) => a.roundNumber - b.roundNumber)
   } catch (e) {
     return []
@@ -150,8 +150,8 @@ export async function saveAchievementProfile(profile: AchievementProfile): Promi
 export async function getAchievementProfileBySession(sessionId: string): Promise<AchievementProfile | undefined> {
   try {
     const db = await initDB()
-    const profiles = await db.getAllFromIndex('achievement_profiles', 'sessionId')
-    return profiles.find((p: AchievementProfile) => p.sessionId === sessionId)
+    const profiles = await db.getAllFromIndex('achievement_profiles', 'sessionId', sessionId)
+    return profiles[0]
   } catch (e) {
     return undefined
   }

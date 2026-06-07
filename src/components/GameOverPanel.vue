@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ChallengeTarget } from '@/types'
-import { Trophy, Star, RotateCcw, Target, CheckCircle2, XCircle, FileText } from 'lucide-vue-next'
+import { Trophy, Star, RotateCcw, Target, CheckCircle2, XCircle, FileText, RefreshCw, AlertCircle } from 'lucide-vue-next'
 
 interface Props {
   totalScore: number
@@ -15,7 +15,18 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   newGame: []
   viewAchievement: []
+  generateAchievement: []
 }>()
+
+const isGenerating = ref(false)
+
+async function handleGenerate() {
+  isGenerating.value = true
+  emit('generateAchievement')
+  setTimeout(() => {
+    isGenerating.value = false
+  }, 1000)
+}
 
 const rank = computed(() => {
   if (props.totalScore >= 2000) return { title: '传奇大师', stars: 5, color: '#FDCB6E' }
@@ -116,12 +127,29 @@ const totalChallengeBonus = computed(() => {
       </div>
     </div>
 
-    <button v-if="hasAchievement" 
-            class="btn-secondary w-full flex items-center justify-center gap-2 mb-3"
-            @click="emit('viewAchievement')">
-      <FileText class="w-5 h-5" />
-      <span>查看成就档案</span>
-    </button>
+    <div v-if="hasAchievement" class="mb-3">
+      <button class="btn-secondary w-full flex items-center justify-center gap-2"
+              @click="emit('viewAchievement')">
+        <FileText class="w-5 h-5" />
+        <span>查看成就档案</span>
+      </button>
+    </div>
+
+    <div v-else class="mb-3">
+      <div class="p-3 rounded-xl mb-3 flex items-center gap-3"
+           :style="{ background: 'rgba(253, 203, 110, 0.1)', border: '1px solid rgba(253, 203, 110, 0.2)' }">
+        <AlertCircle class="w-5 h-5 flex-shrink-0" :style="{ color: '#FDCB6E' }" />
+        <p class="text-xs opacity-80">
+          成就档案尚未生成，点击下方按钮手动生成
+        </p>
+      </div>
+      <button class="btn-secondary w-full flex items-center justify-center gap-2"
+              :disabled="isGenerating"
+              @click="handleGenerate">
+        <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': isGenerating }" />
+        <span>{{ isGenerating ? '生成中...' : '生成成就档案' }}</span>
+      </button>
+    </div>
 
     <button class="btn-primary w-full flex items-center justify-center gap-2"
             @click="emit('newGame')">

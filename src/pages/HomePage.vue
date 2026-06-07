@@ -12,7 +12,7 @@ import RoleSelector from '@/components/RoleSelector.vue'
 import ChallengePanel from '@/components/ChallengePanel.vue'
 import AchievementProfile from '@/components/AchievementProfile.vue'
 import AchievementProgress from '@/components/AchievementProgress.vue'
-import { Dice1, Lock } from 'lucide-vue-next'
+import { Dice1, Lock, Trophy } from 'lucide-vue-next'
 
 const game = useGameStore()
 
@@ -46,6 +46,14 @@ onMounted(async () => {
             <h1 class="font-display text-xl font-bold">概率决策</h1>
             <p class="text-xs opacity-60">在风险与收益之间寻找平衡</p>
           </div>
+        </div>
+        <div v-if="game.latestAchievement">
+          <button class="btn-secondary flex items-center gap-2 text-sm"
+                  @click="game.toggleAchievementModal(true)">
+            <Trophy class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+            <span class="hidden sm:inline">最近成就档案</span>
+            <span class="sm:hidden">档案</span>
+          </button>
         </div>
       </div>
     </header>
@@ -125,9 +133,10 @@ onMounted(async () => {
                 :maxRounds="game.present.maxRounds"
                 :challenges="game.present.challenges"
                 :challengeBonus="game.present.challengeBonus"
-                :hasAchievement="!!game.latestAchievement"
+                :hasAchievement="!!game.latestAchievement && game.latestAchievement.sessionId === game.present.sessionId"
                 @newGame="game.startNewGame()"
                 @viewAchievement="game.toggleAchievementModal(true)"
+                @generateAchievement="game.generateAndSaveAchievement()"
               />
             </div>
 
