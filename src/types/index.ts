@@ -74,6 +74,8 @@ export interface RoundChallengeUpdate {
   roundNumber: number
   challengeUpdates: {
     challengeId: string
+    challengeTitle: string
+    challengeDescription: string
     previousProgress: number
     newProgress: number
     completed: boolean

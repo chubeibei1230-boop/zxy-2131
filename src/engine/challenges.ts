@@ -237,6 +237,8 @@ export function updateChallengesProgress(
 
     challengeUpdates.push({
       challengeId: challenge.id,
+      challengeTitle: challenge.title,
+      challengeDescription: challenge.description,
       previousProgress: challenge.current,
       newProgress: newCurrent,
       completed,

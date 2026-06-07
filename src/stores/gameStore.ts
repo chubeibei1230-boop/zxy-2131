@@ -42,19 +42,30 @@ function createInitialState(): GameState {
   }
 }
 
+interface HistoryEntry {
+  state: GameState
+  roundRecord?: RoundRecord
+}
+
 export const useGameStore = defineStore('game', () => {
-  const past = ref<GameState[]>([])
+  const past = ref<HistoryEntry[]>([])
   const present = ref<GameState>(createInitialState())
-  const future = ref<GameState[]>([])
+  const future = ref<HistoryEntry[]>([])
   const roundRecords = ref<RoundRecord[]>([])
   const lastRecordId = ref<string | null>(null)
-  const isInitialized = ref(true)
+  const isInitialized = ref(false)
 
   const canUndo = computed(() => past.value.length > 0 && present.value.phase !== 'gameover')
   const canRedo = computed(() => future.value.length > 0)
 
   function saveToHistory() {
-    past.value.push(JSON.parse(JSON.stringify(present.value)))
+    const lastRecord = roundRecords.value.length > 0 
+      ? JSON.parse(JSON.stringify(roundRecords.value[roundRecords.value.length - 1])) 
+      : undefined
+    past.value.push({
+      state: JSON.parse(JSON.stringify(present.value)),
+      roundRecord: lastRecord
+    })
     future.value = []
     if (past.value.length > 20) {
       past.value.shift()
@@ -64,8 +75,15 @@ export const useGameStore = defineStore('game', () => {
   async function undo() {
     if (!canUndo.value) return
     
-    future.value.unshift(JSON.parse(JSON.stringify(present.value)))
-    const prevState = past.value.pop()!
+    const lastRecord = roundRecords.value.length > 0 
+      ? JSON.parse(JSON.stringify(roundRecords.value[roundRecords.value.length - 1])) 
+      : undefined
+    future.value.unshift({
+      state: JSON.parse(JSON.stringify(present.value)),
+      roundRecord: lastRecord
+    })
+    
+    const prevEntry = past.value.pop()!
     
     if (present.value.phase === 'result' && lastRecordId.value) {
       await deleteRoundRecord(lastRecordId.value)
@@ -73,17 +91,34 @@ export const useGameStore = defineStore('game', () => {
       lastRecordId.value = null
     }
     
-    present.value = prevState
+    present.value = prevEntry.state
     await updateSessionInDB()
   }
 
   async function redo() {
     if (!canRedo.value) return
     
-    past.value.push(JSON.parse(JSON.stringify(present.value)))
-    const nextState = future.value.shift()!
+    const lastRecord = roundRecords.value.length > 0 
+      ? JSON.parse(JSON.stringify(roundRecords.value[roundRecords.value.length - 1])) 
+      : undefined
+    past.value.push({
+      state: JSON.parse(JSON.stringify(present.value)),
+      roundRecord: lastRecord
+    })
     
-    present.value = nextState
+    const nextEntry = future.value.shift()!
+    
+    present.value = nextEntry.state
+    
+    if (nextEntry.roundRecord && present.value.phase === 'result') {
+      const recordExists = roundRecords.value.some(r => r.id === nextEntry.roundRecord!.id)
+      if (!recordExists) {
+        roundRecords.value.push(nextEntry.roundRecord)
+        lastRecordId.value = nextEntry.roundRecord.id
+        await saveRoundRecord(nextEntry.roundRecord)
+      }
+    }
+    
     await updateSessionInDB()
   }
 

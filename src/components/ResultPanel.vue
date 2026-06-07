@@ -103,21 +103,31 @@ function getActivityById(id: string): Activity | undefined {
       
       <div class="space-y-2">
         <div v-for="update in completedChallenges" :key="update.challengeId"
-             class="flex items-center gap-2 text-sm p-2 rounded-lg"
+             class="text-sm p-2 rounded-lg"
              :style="{ background: 'rgba(0, 206, 201, 0.1)' }">
-          <CheckCircle class="w-4 h-4 flex-shrink-0" :style="{ color: '#00CEC9' }" />
-          <span class="flex-1">
-            <span class="font-bold" style="color: #00CEC9">挑战达成!</span>
-            获得 <span class="font-bold text-gradient-gold">+{{ update.bonusEarned }}</span> 分奖励
-          </span>
+          <div class="flex items-center gap-2">
+            <CheckCircle class="w-4 h-4 flex-shrink-0" :style="{ color: '#00CEC9' }" />
+            <span class="font-semibold flex-1">{{ update.challengeTitle }}</span>
+            <span class="font-bold text-gradient-gold">+{{ update.bonusEarned }}</span>
+          </div>
+          <p class="text-xs opacity-60 mt-1 ml-6">
+            <span style="color: #00CEC9">挑战达成!</span> {{ update.challengeDescription }}
+          </p>
         </div>
         
         <div v-for="update in progressedChallenges" :key="update.challengeId"
-             class="flex items-center gap-2 text-sm opacity-80">
-          <TrendingUp class="w-4 h-4 flex-shrink-0" :style="{ color: '#FDCB6E' }" />
-          <span>
-            进度更新: {{ update.previousProgress }} → {{ update.newProgress }}
-          </span>
+             class="text-sm p-2 rounded-lg"
+             :style="{ background: 'rgba(253, 203, 110, 0.08)' }">
+          <div class="flex items-center gap-2">
+            <TrendingUp class="w-4 h-4 flex-shrink-0" :style="{ color: '#FDCB6E' }" />
+            <span class="font-medium flex-1">{{ update.challengeTitle }}</span>
+            <span class="text-xs opacity-70">
+              {{ update.previousProgress }} → {{ update.newProgress }}
+            </span>
+          </div>
+          <p class="text-xs opacity-50 mt-1 ml-6">
+            {{ update.challengeDescription }}
+          </p>
         </div>
       </div>
       

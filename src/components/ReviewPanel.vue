@@ -90,26 +90,39 @@ function toggleExpand(id: string) {
 
             <div v-if="record.challengeUpdates && record.challengeUpdates.challengeUpdates.length > 0">
               <div class="text-xs opacity-60 mb-2">挑战进度:</div>
-              <div class="space-y-1">
+              <div class="space-y-2">
                 <div v-for="update in record.challengeUpdates.challengeUpdates" 
                      :key="update.challengeId"
-                     class="text-xs flex items-center gap-2">
-                  <span v-if="update.completed" 
-                        class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                        :style="{ background: 'rgba(0, 206, 201, 0.2)', color: '#00CEC9' }">
-                    达成!
-                  </span>
-                  <span v-else-if="update.newProgress > update.previousProgress"
-                        class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                        :style="{ background: 'rgba(253, 203, 110, 0.2)', color: '#FDCB6E' }">
-                    +{{ update.newProgress - update.previousProgress }}
-                  </span>
-                  <span class="opacity-70">
-                    {{ update.previousProgress }} → {{ update.newProgress }}
-                  </span>
-                  <span v-if="update.bonusEarned > 0" class="font-bold" style="color: #FDCB6E">
-                    +{{ update.bonusEarned }}
-                  </span>
+                     class="text-xs p-2 rounded-lg"
+                     :style="{ 
+                       background: update.completed 
+                         ? 'rgba(0, 206, 201, 0.08)' 
+                         : update.newProgress > update.previousProgress 
+                           ? 'rgba(253, 203, 110, 0.06)' 
+                           : 'transparent'
+                     }">
+                  <div class="flex items-center gap-2">
+                    <span v-if="update.completed" 
+                          class="px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0"
+                          :style="{ background: 'rgba(0, 206, 201, 0.2)', color: '#00CEC9' }">
+                      达成!
+                    </span>
+                    <span v-else-if="update.newProgress > update.previousProgress"
+                          class="px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0"
+                          :style="{ background: 'rgba(253, 203, 110, 0.2)', color: '#FDCB6E' }">
+                      +{{ update.newProgress - update.previousProgress }}
+                    </span>
+                    <span class="font-medium flex-1 truncate">{{ update.challengeTitle }}</span>
+                    <span class="opacity-70 flex-shrink-0">
+                      {{ update.previousProgress }} → {{ update.newProgress }}
+                    </span>
+                    <span v-if="update.bonusEarned > 0" class="font-bold flex-shrink-0" style="color: #FDCB6E">
+                      +{{ update.bonusEarned }}
+                    </span>
+                  </div>
+                  <p v-if="update.challengeDescription" class="text-[11px] opacity-50 mt-1 ml-0">
+                    {{ update.challengeDescription }}
+                  </p>
                 </div>
               </div>
             </div>
