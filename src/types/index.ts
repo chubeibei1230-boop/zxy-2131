@@ -217,3 +217,81 @@ export interface PartialAchievementProgress {
   }[]
   emergingTags: StrategyTag[]
 }
+
+export interface RoundReviewDetail {
+  roundNumber: number
+  selectedActivities: Activity[]
+  hints: ProbabilityHint[]
+  results: ActivityResult[]
+  scoreDelta: number
+  queueCost: number
+  totalReward: number
+  challengeContribution: number
+  hintHits: number
+  hintMisses: number
+  timestamp: string
+}
+
+export interface RiskAnalysis {
+  riskLevel: 'conservative' | 'balanced' | 'aggressive'
+  label: string
+  description: string
+  lowRiskRatio: number
+  mediumRiskRatio: number
+  highRiskRatio: number
+  averageRiskScore: number
+}
+
+export interface StrategyAdvice {
+  id: string
+  type: 'success' | 'warning' | 'info'
+  title: string
+  description: string
+  actionable: string
+}
+
+export interface ReviewReport {
+  id: string
+  sessionId: string
+  totalScore: number
+  rank: {
+    title: string
+    stars: number
+    color: string
+  }
+  totalRounds: number
+  completedAt: string
+  overallStats: {
+    totalQueueCost: number
+    totalReward: number
+    totalChallengeBonus: number
+    successRate: number
+    averageScorePerRound: number
+    hintAccuracy: number
+  }
+  roundDetails: RoundReviewDetail[]
+  bestRound: {
+    roundNumber: number
+    scoreDelta: number
+    reason: string
+  }
+  worstRound: {
+    roundNumber: number
+    scoreDelta: number
+    reason: string
+  }
+  challengeAnalysis: {
+    total: number
+    completed: number
+    bonus: number
+    list: {
+      title: string
+      completed: boolean
+      bonus: number
+      contributionPercent: number
+    }[]
+  }
+  riskAnalysis: RiskAnalysis
+  strategyAdvices: StrategyAdvice[]
+  summary: string
+}

@@ -1,8 +1,8 @@
 import { openDB } from 'idb'
-import type { GameSession, RoundRecord, AchievementProfile } from '@/types'
+import type { GameSession, RoundRecord, AchievementProfile, ReviewReport } from '@/types'
 
 const DB_NAME = 'prob-game-v2'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise: Promise<any> | null = null
 
@@ -29,6 +29,14 @@ export async function initDB(): Promise<any> {
             const profileStore = db.createObjectStore('achievement_profiles', { keyPath: 'id' })
             profileStore.createIndex('sessionId', 'sessionId')
             profileStore.createIndex('completedAt', 'completedAt')
+          }
+        }
+
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains('review_reports')) {
+            const reportStore = db.createObjectStore('review_reports', { keyPath: 'id' })
+            reportStore.createIndex('sessionId', 'sessionId')
+            reportStore.createIndex('completedAt', 'completedAt')
           }
         }
       }
@@ -183,5 +191,63 @@ export async function deleteAchievementProfile(id: string): Promise<void> {
     await db.delete('achievement_profiles', id)
   } catch (e) {
     console.error('deleteAchievementProfile error:', e)
+  }
+}
+
+export async function saveReviewReport(report: ReviewReport): Promise<void> {
+  try {
+    const db = await initDB()
+    await db.put('review_reports', report)
+  } catch (e) {
+    console.error('saveReviewReport error:', e)
+  }
+}
+
+export async function getReviewReportBySession(sessionId: string): Promise<ReviewReport | undefined> {
+  try {
+    const db = await initDB()
+    const reports = await db.getAllFromIndex('review_reports', 'sessionId', sessionId)
+    return reports[0]
+  } catch (e) {
+    return undefined
+  }
+}
+
+export async function getLatestReviewReport(): Promise<ReviewReport | undefined> {
+  try {
+    const db = await initDB()
+    const reports = await db.getAllFromIndex('review_reports', 'completedAt')
+    return reports[reports.length - 1]
+  } catch (e) {
+    return undefined
+  }
+}
+
+export async function getAllReviewReports(): Promise<ReviewReport[]> {
+  try {
+    const db = await initDB()
+    const reports = await db.getAllFromIndex('review_reports', 'completedAt')
+    return reports.reverse()
+  } catch (e) {
+    return []
+  }
+}
+
+export async function getRecentReviewReports(limit: number = 10): Promise<ReviewReport[]> {
+  try {
+    const db = await initDB()
+    const reports = await db.getAllFromIndex('review_reports', 'completedAt')
+    return reports.reverse().slice(0, limit)
+  } catch (e) {
+    return []
+  }
+}
+
+export async function deleteReviewReport(id: string): Promise<void> {
+  try {
+    const db = await initDB()
+    await db.delete('review_reports', id)
+  } catch (e) {
+    console.error('deleteReviewReport error:', e)
   }
 }

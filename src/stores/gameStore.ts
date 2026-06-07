@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GameState, RoundRecord, Activity, UserRole, GameSession, AchievementProfile, PartialAchievementProgress } from '@/types'
+import type { GameState, RoundRecord, Activity, UserRole, GameSession, AchievementProfile, PartialAchievementProgress, ReviewReport } from '@/types'
 import { getRandomActivities } from '@/engine/activities'
 import { generateHints } from '@/engine/probability'
 import { settleRound, generateId } from '@/engine/settlement'
 import { generateRandomChallenges, createInitialChallengeProgress, updateChallengesProgress } from '@/engine/challenges'
 import { generateAchievementProfile, calculatePartialProgress } from '@/engine/achievement'
+import { generateReviewReport } from '@/engine/reviewReport'
 import { 
   saveSession, 
   saveRoundRecord, 
@@ -14,7 +15,11 @@ import {
   getLatestSession,
   saveAchievementProfile,
   getLatestAchievementProfile,
-  getAchievementProfileBySession
+  getAchievementProfileBySession,
+  saveReviewReport,
+  getReviewReportBySession,
+  getLatestReviewReport,
+  getRecentReviewReports
 } from '@/db'
 
 const MAX_ROUNDS = 10
@@ -60,6 +65,9 @@ export const useGameStore = defineStore('game', () => {
   const isInitialized = ref(false)
   const latestAchievement = ref<AchievementProfile | null>(null)
   const showAchievementModal = ref(false)
+  const latestReviewReport = ref<ReviewReport | null>(null)
+  const recentReviewReports = ref<ReviewReport[]>([])
+  const showReviewReportModal = ref(false)
 
   const canUndo = computed(() => past.value.length > 0 && present.value.phase !== 'gameover')
   const canRedo = computed(() => future.value.length > 0)
@@ -217,6 +225,7 @@ export const useGameStore = defineStore('game', () => {
       lastRecordId.value = null
       await updateSessionInDB()
       await generateAndSaveAchievement()
+      await generateAndSaveReviewReport()
       return
     }
 
@@ -254,13 +263,55 @@ export const useGameStore = defineStore('game', () => {
     latestAchievement.value = profile
   }
 
+  async function generateAndSaveReviewReport() {
+    if (present.value.phase !== 'gameover') return
+
+    const existingReport = await getReviewReportBySession(present.value.sessionId)
+    if (existingReport) {
+      latestReviewReport.value = existingReport
+      return
+    }
+
+    const report = generateReviewReport(
+      present.value.sessionId,
+      present.value.totalScore,
+      present.value.maxRounds,
+      roundRecords.value,
+      present.value.challenges,
+      present.value.challengeBonus
+    )
+
+    await saveReviewReport(report)
+    latestReviewReport.value = report
+    await loadRecentReviewReports()
+  }
+
   async function loadLatestAchievement() {
     const profile = await getLatestAchievementProfile()
     latestAchievement.value = profile || null
   }
 
+  async function loadLatestReviewReport() {
+    const report = await getLatestReviewReport()
+    latestReviewReport.value = report || null
+  }
+
+  async function loadRecentReviewReports() {
+    const reports = await getRecentReviewReports(10)
+    recentReviewReports.value = reports
+  }
+
   function toggleAchievementModal(show?: boolean) {
     showAchievementModal.value = show !== undefined ? show : !showAchievementModal.value
+  }
+
+  function toggleReviewReportModal(show?: boolean) {
+    showReviewReportModal.value = show !== undefined ? show : !showReviewReportModal.value
+  }
+
+  function openReviewReport(report: ReviewReport) {
+    latestReviewReport.value = report
+    showReviewReportModal.value = true
   }
 
   async function startNewGame() {
@@ -372,6 +423,8 @@ export const useGameStore = defineStore('game', () => {
     if (!isInitialized.value) {
       await restoreFromDB()
       await loadLatestAchievement()
+      await loadLatestReviewReport()
+      await loadRecentReviewReports()
     }
   }
 
@@ -383,6 +436,9 @@ export const useGameStore = defineStore('game', () => {
     isInitialized,
     latestAchievement,
     showAchievementModal,
+    latestReviewReport,
+    recentReviewReports,
+    showReviewReportModal,
     partialProgress,
     canUndo,
     canRedo,
@@ -398,6 +454,11 @@ export const useGameStore = defineStore('game', () => {
     initGame,
     generateAndSaveAchievement,
     loadLatestAchievement,
-    toggleAchievementModal
+    toggleAchievementModal,
+    generateAndSaveReviewReport,
+    loadLatestReviewReport,
+    loadRecentReviewReports,
+    toggleReviewReportModal,
+    openReviewReport
   }
 })

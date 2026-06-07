@@ -1,17 +1,27 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { RoundRecord } from '@/types'
-import { History, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import type { RoundRecord, ReviewReport } from '@/types'
+import { History, ChevronDown, ChevronUp, BarChart3, Trophy } from 'lucide-vue-next'
 
 interface Props {
   records: RoundRecord[]
+  recentReports?: ReviewReport[]
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  viewReport: [report: ReviewReport]
+}>()
+
 const expandedId = ref<string | null>(null)
+const showReports = ref(false)
 
 function toggleExpand(id: string) {
   expandedId.value = expandedId.value === id ? null : id
+}
+
+function toggleReports() {
+  showReports.value = !showReports.value
 }
 </script>
 
@@ -21,6 +31,46 @@ function toggleExpand(id: string) {
       <History class="w-5 h-5" :style="{ color: '#A29BFE' }" />
       <h2 class="font-display font-bold text-lg">复盘记录</h2>
       <span class="text-xs opacity-50 ml-auto">(自动保存)</span>
+    </div>
+
+    <div v-if="recentReports && recentReports.length > 0" class="mb-4">
+      <div
+        class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-white/5 transition-colors mb-2"
+        :style="{ background: 'rgba(253, 203, 110, 0.08)' }"
+        @click="toggleReports"
+      >
+        <div class="flex items-center gap-2">
+          <BarChart3 class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+          <span class="text-sm font-medium">历史复盘报告</span>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                :style="{ background: 'rgba(253, 203, 110, 0.2)', color: '#FDCB6E' }">
+            {{ recentReports.length }}
+          </span>
+        </div>
+        <component :is="showReports ? ChevronUp : ChevronDown" class="w-4 h-4 opacity-50" />
+      </div>
+
+      <div v-if="showReports" class="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+        <div v-for="report in recentReports" :key="report.id"
+             class="p-3 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+             :style="{ background: 'rgba(255,255,255,0.03)' }"
+             @click="emit('viewReport', report)">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <Trophy class="w-4 h-4" :style="{ color: report.rank.color }" />
+              <span class="font-semibold text-sm">{{ report.rank.title }}</span>
+            </div>
+            <span class="font-display font-bold text-sm"
+                  :style="{ color: report.rank.color }">
+              {{ report.totalScore }}
+            </span>
+          </div>
+          <div class="text-xs opacity-60 flex items-center justify-between">
+            <span>{{ report.totalRounds }} 轮</span>
+            <span>{{ new Date(report.completedAt).toLocaleDateString() }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <p class="text-sm opacity-70 mb-4">

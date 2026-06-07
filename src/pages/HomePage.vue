@@ -12,7 +12,8 @@ import RoleSelector from '@/components/RoleSelector.vue'
 import ChallengePanel from '@/components/ChallengePanel.vue'
 import AchievementProfile from '@/components/AchievementProfile.vue'
 import AchievementProgress from '@/components/AchievementProgress.vue'
-import { Dice1, Lock, Trophy } from 'lucide-vue-next'
+import ReviewReport from '@/components/ReviewReport.vue'
+import { Dice1, Lock, Trophy, BarChart3 } from 'lucide-vue-next'
 
 const game = useGameStore()
 
@@ -47,13 +48,23 @@ onMounted(async () => {
             <p class="text-xs opacity-60">在风险与收益之间寻找平衡</p>
           </div>
         </div>
-        <div v-if="game.latestAchievement">
-          <button class="btn-secondary flex items-center gap-2 text-sm"
-                  @click="game.toggleAchievementModal(true)">
-            <Trophy class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
-            <span class="hidden sm:inline">最近成就档案</span>
-            <span class="sm:hidden">档案</span>
-          </button>
+        <div class="flex items-center gap-2">
+          <div v-if="game.latestReviewReport">
+            <button class="btn-secondary flex items-center gap-2 text-sm"
+                    @click="game.toggleReviewReportModal(true)">
+              <BarChart3 class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+              <span class="hidden sm:inline">策略复盘</span>
+              <span class="sm:hidden">复盘</span>
+            </button>
+          </div>
+          <div v-if="game.latestAchievement">
+            <button class="btn-secondary flex items-center gap-2 text-sm"
+                    @click="game.toggleAchievementModal(true)">
+              <Trophy class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+              <span class="hidden sm:inline">成就档案</span>
+              <span class="sm:hidden">成就</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -134,9 +145,12 @@ onMounted(async () => {
                 :challenges="game.present.challenges"
                 :challengeBonus="game.present.challengeBonus"
                 :hasAchievement="!!game.latestAchievement && game.latestAchievement.sessionId === game.present.sessionId"
+                :hasReviewReport="!!game.latestReviewReport && game.latestReviewReport.sessionId === game.present.sessionId"
                 @newGame="game.startNewGame()"
                 @viewAchievement="game.toggleAchievementModal(true)"
                 @generateAchievement="game.generateAndSaveAchievement()"
+                @viewReviewReport="game.toggleReviewReportModal(true)"
+                @generateReviewReport="game.generateAndSaveReviewReport()"
               />
             </div>
 
@@ -193,7 +207,11 @@ onMounted(async () => {
             :activities="game.present.availableActivities"
           />
           
-          <ReviewPanel :records="game.roundRecords" />
+          <ReviewPanel 
+            :records="game.roundRecords" 
+            :recentReports="game.recentReviewReports"
+            @viewReport="game.openReviewReport"
+          />
         </div>
       </div>
     </main>
@@ -206,6 +224,12 @@ onMounted(async () => {
       v-if="game.showAchievementModal"
       :profile="game.latestAchievement"
       @close="game.toggleAchievementModal(false)"
+    />
+
+    <ReviewReport
+      v-if="game.showReviewReportModal"
+      :report="game.latestReviewReport"
+      @close="game.toggleReviewReportModal(false)"
     />
   </div>
 </template>
