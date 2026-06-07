@@ -4,6 +4,7 @@ import type { GameState, RoundRecord, Activity, UserRole, GameSession } from '@/
 import { getRandomActivities } from '@/engine/activities'
 import { generateHints } from '@/engine/probability'
 import { settleRound, generateId } from '@/engine/settlement'
+import { generateRandomChallenges, createInitialChallengeProgress, updateChallengesProgress } from '@/engine/challenges'
 import { 
   saveSession, 
   saveRoundRecord, 
@@ -19,6 +20,8 @@ function createInitialState(): GameState {
   const sessionId = generateId()
   const activities = getRandomActivities(4)
   const hints = generateHints(activities, 2)
+  const challenges = generateRandomChallenges(3)
+  const challengeProgress = createInitialChallengeProgress()
 
   return {
     sessionId,
@@ -32,7 +35,10 @@ function createInitialState(): GameState {
     queueLength: Math.floor(Math.random() * 10) + 3,
     rewardPool: Math.floor(Math.random() * 200) + 100,
     phase: 'selecting',
-    currentRole: 'player'
+    currentRole: 'player',
+    challenges,
+    challengeProgress,
+    challengeBonus: 0
   }
 }
 
@@ -117,8 +123,19 @@ export const useGameStore = defineStore('game', () => {
       present.value.rewardPool
     )
 
+    const { updatedChallenges, updatedProgress, roundUpdate, totalBonus } = updateChallengesProgress(
+      present.value.challenges,
+      present.value.challengeProgress,
+      present.value.selectedActivities,
+      result,
+      present.value.queueLength
+    )
+
     present.value.currentResult = result
-    present.value.totalScore += result.totalReward
+    present.value.totalScore += result.totalReward + totalBonus
+    present.value.challengeBonus += totalBonus
+    present.value.challenges = updatedChallenges
+    present.value.challengeProgress = updatedProgress
     present.value.phase = 'result'
 
     const record: RoundRecord = {
@@ -128,8 +145,9 @@ export const useGameStore = defineStore('game', () => {
       selectedActivities: JSON.parse(JSON.stringify(present.value.selectedActivities)),
       hints: JSON.parse(JSON.stringify(present.value.hints)),
       result,
-      scoreDelta: result.totalReward,
-      timestamp: new Date().toISOString()
+      scoreDelta: result.totalReward + totalBonus,
+      timestamp: new Date().toISOString(),
+      challengeUpdates: roundUpdate
     }
 
     roundRecords.value.push(record)
@@ -184,7 +202,10 @@ export const useGameStore = defineStore('game', () => {
       currentResult: null,
       phase: 'selecting',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      challenges: present.value.challenges,
+      challengeProgress: present.value.challengeProgress,
+      challengeBonus: 0
     })
   }
 
@@ -202,7 +223,10 @@ export const useGameStore = defineStore('game', () => {
       currentResult: present.value.currentResult,
       phase: present.value.phase,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      challenges: present.value.challenges,
+      challengeProgress: present.value.challengeProgress,
+      challengeBonus: present.value.challengeBonus
     })
   }
 
@@ -233,7 +257,10 @@ export const useGameStore = defineStore('game', () => {
           queueLength: latest.queueLength || Math.floor(Math.random() * 10) + 3,
           rewardPool: latest.rewardPool || Math.floor(Math.random() * 200) + 100,
           phase: latest.phase || 'selecting',
-          currentRole: 'player'
+          currentRole: 'player',
+          challenges: latest.challenges || generateRandomChallenges(3),
+          challengeProgress: latest.challengeProgress || createInitialChallengeProgress(),
+          challengeBonus: latest.challengeBonus || 0
         }
         
         roundRecords.value = records

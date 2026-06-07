@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trophy, Star, RotateCcw } from 'lucide-vue-next'
+import type { ChallengeTarget } from '@/types'
+import { Trophy, Star, RotateCcw, Target, CheckCircle2, XCircle } from 'lucide-vue-next'
 
 interface Props {
   totalScore: number
   maxRounds: number
+  challenges?: ChallengeTarget[]
+  challengeBonus?: number
 }
 
 const props = defineProps<Props>()
@@ -18,6 +21,15 @@ const rank = computed(() => {
   if (props.totalScore >= 1000) return { title: '策略达人', stars: 3, color: '#00CEC9' }
   if (props.totalScore >= 500) return { title: '初级玩家', stars: 2, color: '#74B9FF' }
   return { title: '新手上路', stars: 1, color: '#B2BEC3' }
+})
+
+const completedChallenges = computed(() => {
+  if (!props.challenges) return []
+  return props.challenges.filter(c => c.completed)
+})
+
+const totalChallengeBonus = computed(() => {
+  return props.challengeBonus || 0
 })
 </script>
 
@@ -49,7 +61,7 @@ const rank = computed(() => {
       </div>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-3 gap-4 mb-6">
       <div class="p-3 rounded-xl" :style="{ background: 'rgba(255,255,255,0.05)' }">
         <div class="text-2xl mb-1">🎯</div>
         <div class="text-xs opacity-70">总轮次</div>
@@ -64,6 +76,41 @@ const rank = computed(() => {
         <div class="text-2xl mb-1">📊</div>
         <div class="text-xs opacity-70">平均分</div>
         <div class="font-display font-bold">{{ Math.round(totalScore / maxRounds) }}</div>
+      </div>
+    </div>
+
+    <div v-if="challenges && challenges.length > 0" class="mb-6">
+      <div class="flex items-center justify-center gap-2 mb-3">
+        <Target class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+        <h3 class="font-display font-bold">策略挑战完成情况</h3>
+        <span class="text-xs px-2 py-0.5 rounded-full"
+              :style="{ background: 'rgba(253, 203, 110, 0.2)', color: '#FDCB6E' }">
+          {{ completedChallenges.length }}/{{ challenges.length }}
+        </span>
+      </div>
+      
+      <div class="p-4 rounded-xl text-left space-y-2"
+           :style="{ background: 'rgba(255,255,255,0.05)' }">
+        <div v-for="challenge in challenges" :key="challenge.id"
+             class="flex items-center gap-3">
+          <component :is="challenge.completed ? CheckCircle2 : XCircle"
+                     class="w-4 h-4 flex-shrink-0"
+                     :style="{ color: challenge.completed ? '#00CEC9' : '#FF7675' }" />
+          <span class="text-sm flex-1"
+                :class="{ 'opacity-50 line-through': !challenge.completed }">
+            {{ challenge.title }}
+          </span>
+          <span class="text-xs font-bold"
+                :style="{ color: challenge.completed ? '#00CEC9' : '#B2BEC3' }">
+            {{ challenge.completed ? '+' + challenge.bonus : '未完成' }}
+          </span>
+        </div>
+        
+        <div v-if="totalChallengeBonus > 0" 
+             class="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+          <span class="text-sm opacity-70">挑战奖励合计</span>
+          <span class="font-display font-bold text-gradient-gold">+{{ totalChallengeBonus }}</span>
+        </div>
       </div>
     </div>
 

@@ -88,6 +88,32 @@ function toggleExpand(id: string) {
               </ul>
             </div>
 
+            <div v-if="record.challengeUpdates && record.challengeUpdates.challengeUpdates.length > 0">
+              <div class="text-xs opacity-60 mb-2">挑战进度:</div>
+              <div class="space-y-1">
+                <div v-for="update in record.challengeUpdates.challengeUpdates" 
+                     :key="update.challengeId"
+                     class="text-xs flex items-center gap-2">
+                  <span v-if="update.completed" 
+                        class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        :style="{ background: 'rgba(0, 206, 201, 0.2)', color: '#00CEC9' }">
+                    达成!
+                  </span>
+                  <span v-else-if="update.newProgress > update.previousProgress"
+                        class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        :style="{ background: 'rgba(253, 203, 110, 0.2)', color: '#FDCB6E' }">
+                    +{{ update.newProgress - update.previousProgress }}
+                  </span>
+                  <span class="opacity-70">
+                    {{ update.previousProgress }} → {{ update.newProgress }}
+                  </span>
+                  <span v-if="update.bonusEarned > 0" class="font-bold" style="color: #FDCB6E">
+                    +{{ update.bonusEarned }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div class="text-xs opacity-50">
               {{ new Date(record.timestamp).toLocaleString() }}
             </div>

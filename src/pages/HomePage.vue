@@ -9,6 +9,7 @@ import ControlBar from '@/components/ControlBar.vue'
 import ReviewPanel from '@/components/ReviewPanel.vue'
 import GameOverPanel from '@/components/GameOverPanel.vue'
 import RoleSelector from '@/components/RoleSelector.vue'
+import ChallengePanel from '@/components/ChallengePanel.vue'
 import { Dice1, Lock } from 'lucide-vue-next'
 
 const game = useGameStore()
@@ -65,6 +66,11 @@ onMounted(async () => {
             :maxSelected="3"
           />
 
+          <ChallengePanel
+            :challenges="game.present.challenges"
+            :challengeBonus="game.present.challengeBonus"
+          />
+
           <div v-if="game.present.currentRole === 'hint'" class="glass-card p-5">
             <h3 class="font-display font-bold text-lg mb-3" style="color: #FDCB6E">
               💡 提示员权限
@@ -113,6 +119,8 @@ onMounted(async () => {
               <GameOverPanel
                 :totalScore="game.present.totalScore"
                 :maxRounds="game.present.maxRounds"
+                :challenges="game.present.challenges"
+                :challengeBonus="game.present.challengeBonus"
                 @newGame="game.startNewGame()"
               />
             </div>
@@ -121,6 +129,7 @@ onMounted(async () => {
               <ResultPanel
                 :result="game.present.currentResult"
                 :selectedActivities="game.present.selectedActivities"
+                :challengeUpdates="game.roundRecords[game.roundRecords.length - 1]?.challengeUpdates"
               />
             </div>
 

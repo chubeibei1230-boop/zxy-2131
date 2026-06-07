@@ -1,16 +1,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { RoundResult, Activity } from '@/types'
-import { CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import type { RoundResult, Activity, RoundChallengeUpdate } from '@/types'
+import { CheckCircle, XCircle, TrendingUp, TrendingDown, Target } from 'lucide-vue-next'
 
 interface Props {
   result: RoundResult
   selectedActivities: Activity[]
+  challengeUpdates?: RoundChallengeUpdate
 }
 
 const props = defineProps<Props>()
 
 const isPositive = computed(() => props.result.totalReward >= 0)
+
+const hasChallengeUpdates = computed(() => {
+  if (!props.challengeUpdates) return false
+  return props.challengeUpdates.challengeUpdates.some(
+    u => u.completed || u.newProgress > u.previousProgress
+  )
+})
+
+const completedChallenges = computed(() => {
+  if (!props.challengeUpdates) return []
+  return props.challengeUpdates.challengeUpdates.filter(u => u.completed)
+})
+
+const progressedChallenges = computed(() => {
+  if (!props.challengeUpdates) return []
+  return props.challengeUpdates.challengeUpdates.filter(
+    u => !u.completed && u.newProgress > u.previousProgress
+  )
+})
+
+const totalChallengeBonus = computed(() => {
+  if (!props.challengeUpdates) return 0
+  return props.challengeUpdates.challengeUpdates.reduce((sum, u) => sum + u.bonusEarned, 0)
+})
 
 function getActivityById(id: string): Activity | undefined {
   return props.selectedActivities.find(a => a.id === id)
@@ -66,6 +91,43 @@ function getActivityById(id: string): Activity | undefined {
       <ul class="text-sm space-y-1 opacity-80">
         <li v-for="(event, i) in result.events" :key="i">• {{ event }}</li>
       </ul>
+    </div>
+
+    <div v-if="hasChallengeUpdates" 
+         class="p-4 rounded-xl mt-4"
+         :style="{ background: 'linear-gradient(135deg, rgba(253, 203, 110, 0.15), rgba(255, 118, 117, 0.1))' }">
+      <div class="flex items-center gap-2 mb-3">
+        <Target class="w-4 h-4" :style="{ color: '#FDCB6E' }" />
+        <h3 class="font-semibold">策略挑战更新</h3>
+      </div>
+      
+      <div class="space-y-2">
+        <div v-for="update in completedChallenges" :key="update.challengeId"
+             class="flex items-center gap-2 text-sm p-2 rounded-lg"
+             :style="{ background: 'rgba(0, 206, 201, 0.1)' }">
+          <CheckCircle class="w-4 h-4 flex-shrink-0" :style="{ color: '#00CEC9' }" />
+          <span class="flex-1">
+            <span class="font-bold" style="color: #00CEC9">挑战达成!</span>
+            获得 <span class="font-bold text-gradient-gold">+{{ update.bonusEarned }}</span> 分奖励
+          </span>
+        </div>
+        
+        <div v-for="update in progressedChallenges" :key="update.challengeId"
+             class="flex items-center gap-2 text-sm opacity-80">
+          <TrendingUp class="w-4 h-4 flex-shrink-0" :style="{ color: '#FDCB6E' }" />
+          <span>
+            进度更新: {{ update.previousProgress }} → {{ update.newProgress }}
+          </span>
+        </div>
+      </div>
+      
+      <div v-if="totalChallengeBonus > 0" 
+           class="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+        <span class="text-sm opacity-70">本轮挑战奖励</span>
+        <span class="font-display font-bold text-xl text-gradient-gold">
+          +{{ totalChallengeBonus }}
+        </span>
+      </div>
     </div>
   </div>
 </template>

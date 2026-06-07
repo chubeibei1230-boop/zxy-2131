@@ -40,6 +40,47 @@ export interface RoundResult {
   events: string[]
 }
 
+export type ChallengeType = 
+  | 'consecutive_low_risk'
+  | 'high_crowd_profit'
+  | 'single_round_reward'
+  | 'total_high_risk'
+  | 'perfect_rounds'
+  | 'no_failure_streak'
+  | 'specific_activity'
+  | 'queue_length_strategy'
+
+export interface ChallengeTarget {
+  id: string
+  type: ChallengeType
+  title: string
+  description: string
+  target: number
+  current: number
+  completed: boolean
+  bonus: number
+  progressText: string
+}
+
+export interface ChallengeProgress {
+  consecutiveLowRiskCount: number
+  consecutiveNoFailureCount: number
+  highRiskActivityCount: number
+  perfectRoundCount: number
+  activityCounts: Record<string, number>
+}
+
+export interface RoundChallengeUpdate {
+  roundNumber: number
+  challengeUpdates: {
+    challengeId: string
+    previousProgress: number
+    newProgress: number
+    completed: boolean
+    bonusEarned: number
+  }[]
+}
+
 export interface GameState {
   sessionId: string
   totalScore: number
@@ -53,6 +94,9 @@ export interface GameState {
   rewardPool: number
   phase: 'selecting' | 'result' | 'gameover'
   currentRole: UserRole
+  challenges: ChallengeTarget[]
+  challengeProgress: ChallengeProgress
+  challengeBonus: number
 }
 
 export interface RoundRecord {
@@ -64,6 +108,7 @@ export interface RoundRecord {
   result: RoundResult
   scoreDelta: number
   timestamp: string
+  challengeUpdates?: RoundChallengeUpdate
 }
 
 export interface GameSession {
@@ -80,6 +125,9 @@ export interface GameSession {
   phase: 'selecting' | 'result' | 'gameover'
   createdAt: string
   updatedAt: string
+  challenges?: ChallengeTarget[]
+  challengeProgress?: ChallengeProgress
+  challengeBonus?: number
 }
 
 export interface HistoryState {
